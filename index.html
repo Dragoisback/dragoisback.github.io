@@ -25,115 +25,165 @@
     </style>
 </head>
 <body>
-    <div id="root">
-        <div class="loading-container">
-            <div class="loading-spinner"></div>
-            <div>Loading Glossary...</div>
-        </div>
-    </div>
+    <div id="root"></div>
 
     <script>
-        // Fetches all data files in parallel.
-        async function loadAllContent() {
-            const filePaths = [];
-            for (let i = 1; i <= 12; i++) {
-                filePaths.push(`content/data${i}.json`);
+        const CACHE_VERSION = "1.0";
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+
+        // Function to display a non-critical error message
+        function showNonCriticalError(message) {
+            console.warn(message);
+            const errorDisplayDiv = document.getElementById('non-critical-error-display');
+            if (errorDisplayDiv) {
+                const errorParagraph = document.createElement('p');
+                errorParagraph.textContent = message;
+                // Style is now primarily handled by Tailwind classes on the div in wiki.js,
+                // but a specific style for paragraph can be added if needed.
+                // errorParagraph.style.color = 'orange'; // Example direct style
+                errorDisplayDiv.appendChild(errorParagraph);
             }
+        }
 
-            const fetchPromises = filePaths.map(path =>
-                fetch(path).then(response => {
-                    if (!response.ok) {
-                        // For data1.json, a 404 is critical. For others, it might just mean fewer files than 12.
-                        if (path.endsWith('data1.json') && response.status === 404) {
-                            return Promise.reject(new Error("No data files found. Make sure 'data1.json' exists in the 'content' folder."));
-                        } else if (response.status === 404) {
-                            return null; // Indicate that the file was not found, but not an error for data2-12
+        async function loadAndRenderGlossaryIncrementally() {
+            let allEntries = [];
+            let globalIdCounter = 0;
+            const totalFiles = 12; // Assuming data1.json to data12.json
+
+            for (let i = 1; i <= totalFiles; i++) {
+                const filePath = `content/data${i}.json`;
+                const cacheKey = `glossary_data_${i}_json`;
+                let fileText = null;
+                let fromCache = false;
+
+                try {
+                    const cachedItem = localStorage.getItem(cacheKey);
+                    if (cachedItem) {
+                        const parsedCachedItem = JSON.parse(cachedItem);
+                        if (parsedCachedItem.version === CACHE_VERSION && parsedCachedItem.data) {
+                            fileText = parsedCachedItem.data;
+                            fromCache = true;
+                            console.log(`Loaded ${filePath} from cache.`);
+                        } else {
+                            console.log(`Cache version mismatch or data missing for ${filePath}. Fetching from network.`);
+                            localStorage.removeItem(cacheKey); // Remove invalid cache entry
                         }
-                        return Promise.reject(new Error(`HTTP error! status: ${response.status} for ${path}`));
                     }
-                    return response.text();
-                })
-            );
+                } catch (e) {
+                    console.warn(`Error accessing localStorage for ${cacheKey}: ${e.message}. Proceeding with network fetch.`);
+                    // If localStorage is completely unavailable, this error might repeat.
+                    // Consider a flag to disable localStorage for the session if it fails repeatedly.
+                }
 
-            const results = await Promise.allSettled(fetchPromises);
+                if (!fromCache) {
+                    try {
+                        const response = await fetch(filePath);
+                        if (!response.ok) {
+                            if (i === 1) { // Critical file
+                                throw new Error(`Failed to load critical data file: ${filePath}. Status: ${response.status}`);
+                            } else {
+                                showNonCriticalError(`Warning: Could not load ${filePath}. Some entries may be missing.`);
+                                continue;
+                            }
+                        }
+                        fileText = await response.text();
+                        try {
+                            localStorage.setItem(cacheKey, JSON.stringify({ version: CACHE_VERSION, data: fileText }));
+                            console.log(`Cached ${filePath} to localStorage.`);
+                        } catch (e) {
+                            console.warn(`Error saving to localStorage for ${cacheKey}: ${e.message}. Cache may be full or unavailable.`);
+                        }
+                    } catch (networkError) {
+                        if (i === 1) {
+                            console.error("Critical error loading glossary:", networkError);
+                            document.getElementById('root').innerHTML = `
+                                <div style="padding: 20px; color: red; text-align: center; font-family: sans-serif;">
+                                    <h2>Failed to Load Essential Glossary Data</h2>
+                                    <p>${networkError.message}</p>
+                                    <p>The glossary cannot be displayed. Please check the console (F12) for more details or try reloading.</p>
+                                    <button onclick="location.reload()" style="padding: 8px 16px; margin-top: 10px; cursor: pointer;">Retry</button>
+                                </div>`;
+                            return;
+                        } else {
+                            console.error(`Error fetching file ${filePath}:`, networkError);
+                            showNonCriticalError(`An error occurred while fetching ${filePath}.`);
+                            continue; // Try next file
+                        }
+                    }
+                }
 
-            let allData = [];
-            let data1Loaded = false;
-
-            results.forEach((result, index) => {
-                if (result.status === 'fulfilled' && result.value) {
-                    const text = result.value;
-                    // Handle the invalid "][" structure by splitting and parsing each part
-                    const validJsonStrings = text.replace(/\]\[/g, ']||[').split('||');
+                if (fileText) {
+                    // IMPORTANT WORKAROUND: The following line attempts to fix malformed JSON data
+                    // where multiple arrays might be concatenated without a comma and with ']['.
+                    // e.g., [{"entry":"one"}] [{"entry":"two"}]
+                    // This is corrected to [{"entry":"one"}]||[{"entry":"two"}] and then split.
+                    // IDEAL SOLUTION: Ensure all content/dataN.json files are generated as
+                    // single, valid JSON arrays to avoid this workaround and potential parsing issues.
+                    const validJsonStrings = fileText.replace(/\]\[/g, ']||[').split('||');
+                    let fileData = [];
                     validJsonStrings.forEach(jsonString => {
                         if (jsonString.trim()) {
                             try {
-                                const data = JSON.parse(jsonString);
-                                if (Array.isArray(data)) {
-                                    allData = allData.concat(data);
-                                    if (index === 0) { // data1.json is the first in the array
-                                        data1Loaded = true;
-                                    }
+                                const parsedChunk = JSON.parse(jsonString);
+                                if (Array.isArray(parsedChunk)) {
+                                    fileData = fileData.concat(parsedChunk);
+                                } else {
+                                   console.warn(`Parsed chunk from ${filePath} (from ${fromCache ? 'cache' : 'network'}) is not an array:`, parsedChunk);
                                 }
                             } catch (parseError) {
-                                console.warn(`Could not parse JSON from ${filePaths[index]}: ${parseError}`);
-                                // Optionally, you could decide if a parse error for data1.json is critical
+                                if (i === 1 && !fromCache) { // If critical file fails parsing from network
+                                    throw new Error(`Error parsing critical data file ${filePath} from network: ${parseError.message}`);
+                                } else if (fromCache) { // If parsing from cache fails
+                                    console.warn(`Error parsing cached data for ${filePath}: ${parseError.message}. Removing from cache and will attempt refetch on next load.`);
+                                    try { localStorage.removeItem(cacheKey); } catch(e) { console.warn(`Failed to remove corrupted cache for ${cacheKey}: ${e.message}`); }
+                                    // Potentially try a network refetch immediately in this session if critical, or just show error for non-critical
+                                    if (i === 1) {
+                                        // This would require refactoring to re-fetch within this loop iteration.
+                                        // For now, a reload would be needed to fix a corrupted critical cache item.
+                                        showNonCriticalError(`Critical data ${filePath} from cache is corrupted. Please clear cache and reload.`);
+                                    } else {
+                                         showNonCriticalError(`Error parsing cached data from ${filePath}. Some entries may be incomplete or missing.`);
+                                    }
+                                    // Skip adding this corrupted data
+                                    continue;
+                                } else { // Non-critical file fails parsing from network
+                                     showNonCriticalError(`Error parsing data from ${filePath} (network). Some entries may be incomplete or missing. Details: ${parseError.message}`);
+                                }
                             }
                         }
                     });
-                } else if (result.status === 'rejected') {
-                    // If data1.json failed for any reason (including network error or non-404 HTTP error handled by fetch)
-                    if (index === 0) {
-                        throw result.reason; // Rethrow the original error for data1.json
-                    }
-                    console.warn(`Could not load ${filePaths[index]}: ${result.reason}`);
-                }
-                // If result.value is null (e.g. dataX.json not found, X > 1), we just skip it.
-            });
 
-            if (!data1Loaded && results[0].status === 'fulfilled' && !results[0].value) {
-                // This specific case is when data1.json fetch was "successful" (not a network error) but returned null
-                // (e.g. 404, which we converted to null for data1 to be handled by the data1Loaded check).
-                // This ensures the original error message for missing data1.json is thrown.
-                 throw new Error("No data files found. Make sure 'data1.json' exists in the 'content' folder.");
+                    const processedData = fileData.map(item => ({
+                        id: globalIdCounter++,
+                        ...item
+                    }));
+
+                    allEntries = allEntries.concat(processedData);
+
+                    root.render(React.createElement(window.WikiGlossary, {
+                        entries: allEntries,
+                        isLoading: i < totalFiles,
+                        loadingMessage: i < totalFiles ? `Loading part ${i+1} of ${totalFiles}... (${fromCache ? 'cache' : 'network'})` : ""
+                    }));
+                }
             }
 
-            // It's possible data1 loaded but was empty, or contained non-array JSON.
-            // The original logic implies that if data1.json exists and is parsed (even if empty array), it's "found".
-            // The critical error is data1.json *not existing* or *not being loadable*.
-            // We check data1Loaded which is set if data1.json is successfully fetched and parsed into an array.
-            // If data1.json was fetched but was empty or malformed leading to no data being added,
-            // data1Loaded might be false. The requirement is "If data1.json is not successfully loaded".
-            // The check above for `results[0].status === 'rejected'` or `!results[0].value` (for 404) handles this.
-
-            return allData;
+            root.render(React.createElement(window.WikiGlossary, {
+                entries: allEntries,
+                isLoading: false,
+                loadingMessage: "All data loaded."
+            }));
         }
 
-        // Load all content, then load the main glossary script.
-        Promise.all([
-            loadAllContent()
-        ]).then(([jsonData]) => {
-            // Add a unique ID to each entry for React's rendering
-            const processedData = jsonData.map((item, index) => ({
-                id: index,
-                ...item
-            }));
+        // Initial render with an empty glossary shell
+        root.render(React.createElement(window.WikiGlossary, {
+            entries: [],
+            isLoading: true,
+            loadingMessage: "Initializing glossary and preparing to load entries..."
+        }));
 
-            // Render the React component
-            const root = ReactDOM.createRoot(document.getElementById('root'));
-            root.render(React.createElement(window.WikiGlossary, { entries: processedData }));
+        loadAndRenderGlossaryIncrementally();
 
-        }).catch(error => {
-            console.error("Error loading glossary:", error);
-            document.getElementById('root').innerHTML = `
-                <div style="padding: 20px; color: red; text-align: center;">
-                    <h2>Failed to Load Glossary</h2>
-                    <p>${error.message}</p>
-                    <p>Please check the browser's console (F12) for more details.</p>
-                    <button onclick="location.reload()" style="padding: 8px 16px; margin-top: 10px; cursor: pointer;">Retry</button>
-                </div>
-            `;
-        });
     </script>
 </body>
 </html>
