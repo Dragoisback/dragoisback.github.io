@@ -37,24 +37,24 @@ const NovelSelector = ({
     ref: wrapperRef
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => setIsOpen(!isOpen),
-    className: `w-full p-2 border rounded-md flex justify-between items-center text-left ${{darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}}`
+    className: `w-full p-2 border rounded-md flex justify-between items-center text-left ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`
   }, /*#__PURE__*/React.createElement("span", null, selectedNovel === 'All Novels' ? 'Select a Novel' : selectedNovel), /*#__PURE__*/React.createElement("span", {
     className: "transform transition-transform"
   }, isOpen ? '▲' : '▼')), isOpen && /*#__PURE__*/React.createElement("div", {
-    className: `absolute z-10 w-full mt-1 ${{darkMode ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-300'}} border rounded-md shadow-lg max-h-60 overflow-y-auto`
+    className: `absolute z-10 w-full mt-1 ${darkMode ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-300'} border rounded-md shadow-lg max-h-60 overflow-y-auto`
   }, /*#__PURE__*/React.createElement("input", {
     type: "text",
     placeholder: "Search novels...",
     value: searchTerm,
     onChange: e => setSearchTerm(e.target.value),
-    className: `w-full p-2 border-b sticky top-0 ${{darkMode ? 'bg-gray-900 border-gray-700 text-white' : 'bg-gray-50 border-gray-200'}}`
+    className: `w-full p-2 border-b sticky top-0 ${darkMode ? 'bg-gray-900 border-gray-700 text-white' : 'bg-gray-50 border-gray-200'}`
   }), /*#__PURE__*/React.createElement("ul", null, /*#__PURE__*/React.createElement("li", {
     onClick: () => handleSelect('All Novels'),
-    className: `p-2 cursor-pointer ${{darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}}`
+    className: `p-2 cursor-pointer ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`
   }, "All Novels"), filteredNovels.map(novel => /*#__PURE__*/React.createElement("li", {
     key: novel,
     onClick: () => handleSelect(novel),
-    className: `p-2 cursor-pointer ${{darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}}`
+    className: `p-2 cursor-pointer ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`
   }, novel)))));
 };
 
@@ -66,11 +66,11 @@ const DownloadButton = ({
 }) => {
   const handleDownload = () => {
     // Prepare CSV content: "chinese,english"
-    const csvContent = "data:text/csv;charset=utf-8," + "Chinese,English\n" + data.map(e => `"${{e.chinese.replace(/"/g, '""')}},"${{e.english.replace(/"/g, '""')}}"`).join("\n");
+    const csvContent = "data:text/csv;charset=utf-8," + "Chinese,English\n" + data.map(e => `"${e.chinese.replace(/"/g, '""')},"${e.english.replace(/"/g, '""')}"`).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `${{novelName.replace(/ /g, '_')}}_glossary.csv`);
+    link.setAttribute("download", `${novelName.replace(/ /g, '_')}_glossary.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -97,7 +97,7 @@ const ResultsTable = ({
 }) => {
   if (entries.length === 0) {
     return /*#__PURE__*/React.createElement("p", {
-      className: `text-center p-4 ${{darkMode ? 'text-gray-400' : 'text-gray-500'}}`
+      className: `text-center p-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`
     }, "No results found.");
   }
   return /*#__PURE__*/React.createElement("div", {
@@ -181,7 +181,7 @@ function WikiGlossary({
     return results;
   }, [entries, searchTerm, selectedNovel]);
   return /*#__PURE__*/React.createElement("div", {
-    className: `min-h-screen ${{darkMode ? 'bg-gray-900' : 'bg-gray-800 text-white'}}`
+    className: `min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-800 text-white'}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "max-w-7xl mx-auto p-4 sm:p-6 lg:p-8"
   }, /*#__PURE__*/React.createElement("header", {
@@ -190,9 +190,9 @@ function WikiGlossary({
     className: "text-2xl sm:text-4xl font-bold"
   }, "Novel Glossary"), /*#__PURE__*/React.createElement("button", {
     onClick: handleDarkModeToggle,
-    className: `p-2 rounded-full transition-colors ${{darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}}`
+    className: `p-2 rounded-full transition-colors ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`
   }, darkMode ? '☀️' : '🌙')), /*#__PURE__*/React.createElement("main", {
-    className: `p-4 sm:p-6 rounded-xl ${{darkMode ? 'bg-gray-900' : 'bg-white'}}`
+    className: `p-4 sm:p-6 rounded-xl ${darkMode ? 'bg-gray-900' : 'bg-white'}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex flex-col md:flex-row gap-4 mb-6"
   }, /*#__PURE__*/React.createElement("input", {
@@ -200,7 +200,7 @@ function WikiGlossary({
     placeholder: "Search Chinese or English...",
     value: searchTerm,
     onChange: e => setSearchTerm(e.target.value),
-    className: `flex-grow p-2 border rounded-md ${{darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}}`
+    className: `flex-grow p-2 border rounded-md ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`
   }), /*#__PURE__*/React.createElement(NovelSelector, {
     novels: uniqueNovels,
     selectedNovel: selectedNovel,
