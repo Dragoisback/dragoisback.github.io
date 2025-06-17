@@ -8,7 +8,6 @@
     <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
     <script src="wiki.transpiled.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
 
     <style>
@@ -145,7 +144,7 @@
                                          showNonCriticalError(`Error parsing cached data from ${filePath}. Some entries may be incomplete or missing.`);
                                     }
                                     // Skip adding this corrupted data
-                                    continue;
+                                    return;
                                 } else { // Non-critical file fails parsing from network
                                      showNonCriticalError(`Error parsing data from ${filePath} (network). Some entries may be incomplete or missing. Details: ${parseError.message}`);
                                 }
