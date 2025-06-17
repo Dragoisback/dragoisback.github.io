@@ -4,7 +4,8 @@
   "description": "An easy-to-use, searchable web glossary for Chinese novel translations. This tool allows users to quickly find terms in either Chinese or English, filter by novel, and even download specific glossaries for offline use.",
   "main": "wiki.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "babel wiki.js -o wiki.transpiled.js --presets @babel/preset-react"
   },
   "repository": {
     "type": "git",
