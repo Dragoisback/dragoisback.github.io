@@ -55,7 +55,8 @@ function useGlossaryData() {
                 const response = await fetch(`content/data${i}.json?v=${CURRENT_DATA_VERSION}`);
                 if (!response.ok) { if (response.status === 404 && i > 1) break; throw new Error(`HTTP error! status: ${response.status}`); }
                 const text = await response.text();
-                const validJsonStrings = text.replace(/\]\[/g, ']||[').split('||');
+                // This regex handles the "][" malformed JSON by treating it as a delimiter
+                const validJsonStrings = text.replace(/\]\s*\[/g, ']||[').split('||');
                 validJsonStrings.forEach(jsonString => {
                     if (jsonString.trim()) {
                         const data = JSON.parse(jsonString);
@@ -94,7 +95,6 @@ function useGlossaryData() {
                     console.error("Failed to load from DB, fetching from network.", e);
                 }
             }
-            // If cache is old, empty, or fails, fetch from network
             fetchAndCacheData();
         };
         init();
@@ -152,6 +152,31 @@ const NovelSelector = ({ novels, selectedNovel, onSelect, darkMode }) => {
     );
 };
 
+const DownloadButton = ({ data, novelName, darkMode }) => {
+    const handleDownload = () => {
+        const csvHeader = "chinese,english\n";
+        const csvRows = data.map(e => `"${e.chinese.replace(/"/g, '""')}","${e.english.replace(/"/g, '""')}"`).join("\n");
+        const csvContent = "data:text/csv;charset=utf-8," + csvHeader + csvRows;
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `${novelName.replace(/ /g, '_')}_glossary.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    return (
+        <button onClick={handleDownload} className="download-button">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            Download CSV
+        </button>
+    );
+};
+
 const ResultsTable = ({ entries, deletedIds, onDeleteToggle, darkMode }) => {
     if (entries.length === 0) {
         return <p className={`text-center p-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No results found.</p>;
@@ -194,7 +219,7 @@ const DeletionManager = ({ allEntries, deletedIds, onConfirmDeletion, onClearDel
     if (deletedIds.size === 0) return null;
 
     const handleDownload = () => {
-        const finalData = allEntries.filter(entry => !deletedIds.has(entry.id)).map(({ id, ...rest }) => rest); // Remove local ID
+        const finalData = allEntries.filter(entry => !deletedIds.has(entry.id)).map(({ id, ...rest }) => rest);
         const jsonString = JSON.stringify(finalData, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -251,20 +276,15 @@ function WikiGlossary() {
     const handleDeleteToggle = (id) => {
         setDeletedIds(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(id)) {
-                newSet.delete(id);
-            } else {
-                newSet.add(id);
-            }
+            if (newSet.has(id)) newSet.delete(id);
+            else newSet.add(id);
             return newSet;
         });
     };
     
     const handleConfirmDeletion = () => {
-        // After download, we can either clear the deleted list or keep it.
-        // Clearing seems more intuitive.
         setDeletedIds(new Set());
-        alert("Your new glossary file has been downloaded. Please go to your GitHub repository, delete the old data files, and upload this new one.");
+        alert("Your new 'glossary_updated.json' file has been downloaded. Please go to your GitHub repository, delete the old data files, and upload this new one.");
     };
 
     const uniqueNovels = React.useMemo(() => {
@@ -300,21 +320,10 @@ function WikiGlossary() {
     }, [entries, searchTerm, selectedNovel]);
 
     if (status === 'loading') {
-        return (
-            <div className="loading-container">
-                <div className="loading-spinner"></div>
-                <div>Loading Glossary...</div>
-            </div>
-        );
+        return <div className="loading-container"><div className="loading-spinner"></div><div>Loading Glossary...</div></div>;
     }
     if (status === 'error') {
-         return (
-            <div style={{ padding: '20px', color: 'red', textAlign: 'center' }}>
-                <h2>Failed to Load Glossary</h2>
-                <p>Could not fetch data from the network. Please check your connection or the data file paths.</p>
-                <button onClick={forceRefresh} style={{ padding: '8px 16px', marginTop: '10px', cursor: 'pointer' }}>Retry</button>
-            </div>
-        );
+         return <div style={{ padding: '20px', color: 'red', textAlign: 'center' }}><h2>Failed to Load Glossary</h2><p>Could not fetch data. Please fix JSON formatting errors (e.g., unescaped quotes) in your data files and click Retry.</p><button onClick={forceRefresh} style={{ padding: '8px 16px', marginTop: '10px', cursor: 'pointer' }}>Retry</button></div>;
     }
 
     return (
@@ -323,12 +332,8 @@ function WikiGlossary() {
                 <header className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl sm:text-4xl font-bold">Novel Glossary</h1>
                     <div className="flex items-center gap-4">
-                        <button onClick={forceRefresh} title="Force refresh data from server" className={`p-2 rounded-full transition-colors ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}>
-                           🔄
-                        </button>
-                        <button onClick={handleDarkModeToggle} className={`p-2 rounded-full transition-colors ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}>
-                            {darkMode ? '☀️' : '🌙'}
-                        </button>
+                        <button onClick={forceRefresh} title="Force refresh data from server" className={`p-2 rounded-full transition-colors ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}>🔄</button>
+                        <button onClick={handleDarkModeToggle} className={`p-2 rounded-full transition-colors ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}>{darkMode ? '☀️' : '🌙'}</button>
                     </div>
                 </header>
 
