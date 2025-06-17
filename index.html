@@ -83,7 +83,7 @@
                                 throw new Error(`Failed to load critical data file: ${filePath}. Status: ${response.status}`);
                             } else {
                                 showNonCriticalError(`Warning: Could not load ${filePath}. Some entries may be missing.`);
-                                continue;
+                                continue; 
                             }
                         }
                         fileText = await response.text();
@@ -103,7 +103,7 @@
                                     <p>The glossary cannot be displayed. Please check the console (F12) for more details or try reloading.</p>
                                     <button onclick="location.reload()" style="padding: 8px 16px; margin-top: 10px; cursor: pointer;">Retry</button>
                                 </div>`;
-                            return;
+                            return; 
                         } else {
                             console.error(`Error fetching file ${filePath}:`, networkError);
                             showNonCriticalError(`An error occurred while fetching ${filePath}.`);
@@ -111,7 +111,7 @@
                         }
                     }
                 }
-
+                
                 if (fileText) {
                     // IMPORTANT WORKAROUND: The following line attempts to fix malformed JSON data
                     // where multiple arrays might be concatenated without a comma and with ']['.
@@ -160,28 +160,28 @@
 
                     allEntries = allEntries.concat(processedData);
 
-                    root.render(React.createElement(window.WikiGlossary, {
-                        entries: allEntries,
-                        isLoading: i < totalFiles,
+                    root.render(React.createElement(window.WikiGlossary, { 
+                        entries: allEntries, 
+                        isLoading: i < totalFiles, 
                         loadingMessage: i < totalFiles ? `Loading part ${i+1} of ${totalFiles}... (${fromCache ? 'cache' : 'network'})` : ""
                     }));
                 }
             }
 
-            root.render(React.createElement(window.WikiGlossary, {
-                entries: allEntries,
-                isLoading: false,
-                loadingMessage: "All data loaded."
+            root.render(React.createElement(window.WikiGlossary, { 
+                entries: allEntries, 
+                isLoading: false, 
+                loadingMessage: "All data loaded." 
             }));
         }
 
         // Initial render with an empty glossary shell
-        root.render(React.createElement(window.WikiGlossary, {
-            entries: [],
-            isLoading: true,
-            loadingMessage: "Initializing glossary and preparing to load entries..."
+        root.render(React.createElement(window.WikiGlossary, { 
+            entries: [], 
+            isLoading: true, 
+            loadingMessage: "Initializing glossary and preparing to load entries..." 
         }));
-
+        
         loadAndRenderGlossaryIncrementally();
 
     </script>
