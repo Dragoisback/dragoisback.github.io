@@ -7,9 +7,9 @@
     
     <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone@7.21.4/babel.min.js"></script>
+    <script src="wiki.transpiled.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="style.css">
 
     <style>
         .loading-container {
@@ -32,55 +32,92 @@
         </div>
     </div>
 
-    <script type="text/babel">
-        // Fetches all data files sequentially until a file is not found.
+    <script>
+        // Fetches all data files in parallel.
         async function loadAllContent() {
-            let allData = [];
-            let i = 1;
-            while (true) {
-                try {
-                    const response = await fetch(`content/data${i}.json`);
+            const filePaths = [];
+            for (let i = 1; i <= 12; i++) {
+                filePaths.push(`content/data${i}.json`);
+            }
+
+            const fetchPromises = filePaths.map(path =>
+                fetch(path).then(response => {
                     if (!response.ok) {
-                        if (response.status === 404 && i > 1) {
-                            break; // End of files
-                        } else if (response.status === 404 && i === 1) {
-                            throw new Error("No data files found. Make sure 'data1.json' exists in the 'content' folder.");
+                        // For data1.json, a 404 is critical. For others, it might just mean fewer files than 12.
+                        if (path.endsWith('data1.json') && response.status === 404) {
+                            return Promise.reject(new Error("No data files found. Make sure 'data1.json' exists in the 'content' folder."));
+                        } else if (response.status === 404) {
+                            return null; // Indicate that the file was not found, but not an error for data2-12
                         }
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        return Promise.reject(new Error(`HTTP error! status: ${response.status} for ${path}`));
                     }
-                    const text = await response.text();
+                    return response.text();
+                })
+            );
+
+            const results = await Promise.allSettled(fetchPromises);
+
+            let allData = [];
+            let data1Loaded = false;
+
+            results.forEach((result, index) => {
+                if (result.status === 'fulfilled' && result.value) {
+                    const text = result.value;
                     // Handle the invalid "][" structure by splitting and parsing each part
                     const validJsonStrings = text.replace(/\]\[/g, ']||[').split('||');
                     validJsonStrings.forEach(jsonString => {
                         if (jsonString.trim()) {
-                            const data = JSON.parse(jsonString);
-                            if (Array.isArray(data)) {
-                                allData = allData.concat(data);
+                            try {
+                                const data = JSON.parse(jsonString);
+                                if (Array.isArray(data)) {
+                                    allData = allData.concat(data);
+                                    if (index === 0) { // data1.json is the first in the array
+                                        data1Loaded = true;
+                                    }
+                                }
+                            } catch (parseError) {
+                                console.warn(`Could not parse JSON from ${filePaths[index]}: ${parseError}`);
+                                // Optionally, you could decide if a parse error for data1.json is critical
                             }
                         }
                     });
-                } catch (error) {
-                    console.warn(`Could not load or parse data${i}.json. Assuming end of files.`, error);
-                    break;
+                } else if (result.status === 'rejected') {
+                    // If data1.json failed for any reason (including network error or non-404 HTTP error handled by fetch)
+                    if (index === 0) {
+                        throw result.reason; // Rethrow the original error for data1.json
+                    }
+                    console.warn(`Could not load ${filePaths[index]}: ${result.reason}`);
                 }
-                i++;
+                // If result.value is null (e.g. dataX.json not found, X > 1), we just skip it.
+            });
+
+            if (!data1Loaded && results[0].status === 'fulfilled' && !results[0].value) {
+                // This specific case is when data1.json fetch was "successful" (not a network error) but returned null
+                // (e.g. 404, which we converted to null for data1 to be handled by the data1Loaded check).
+                // This ensures the original error message for missing data1.json is thrown.
+                 throw new Error("No data files found. Make sure 'data1.json' exists in the 'content' folder.");
             }
+
+            // It's possible data1 loaded but was empty, or contained non-array JSON.
+            // The original logic implies that if data1.json exists and is parsed (even if empty array), it's "found".
+            // The critical error is data1.json *not existing* or *not being loadable*.
+            // We check data1Loaded which is set if data1.json is successfully fetched and parsed into an array.
+            // If data1.json was fetched but was empty or malformed leading to no data being added,
+            // data1Loaded might be false. The requirement is "If data1.json is not successfully loaded".
+            // The check above for `results[0].status === 'rejected'` or `!results[0].value` (for 404) handles this.
+
             return allData;
         }
 
         // Load all content, then load the main glossary script.
         Promise.all([
-            loadAllContent(),
-            fetch('wiki.js').then(r => r.text())
-        ]).then(([jsonData, glossaryCode]) => {
+            loadAllContent()
+        ]).then(([jsonData]) => {
             // Add a unique ID to each entry for React's rendering
             const processedData = jsonData.map((item, index) => ({
                 id: index,
                 ...item
             }));
-
-            // Transpile and execute the wiki.js code
-            eval(Babel.transform(glossaryCode, { presets: ['react'] }).code);
 
             // Render the React component
             const root = ReactDOM.createRoot(document.getElementById('root'));
