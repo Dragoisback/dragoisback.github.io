@@ -2,7 +2,7 @@
 
 An easy-to-use, searchable web glossary for Chinese novel translations. This tool allows users to quickly find terms in either Chinese or English, filter by novel, and even download specific glossaries for offline use.
 
-**[➡️ View the Live Glossary Here](https://YOUR_USERNAME.github.io/YOUR_REPOSITORY_NAME/)** 
+**[➡️ View the Live Glossary Here](https://dragoisback.github.io/)** 
 *(Note: Replace the link above after enabling GitHub Pages in Step 2!)*
 
 ---
