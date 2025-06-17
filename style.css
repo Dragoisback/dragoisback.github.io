@@ -44,13 +44,20 @@ body {
 .glossary-table tbody tr {
     border-bottom: 1px solid var(--border-color);
     background-color: var(--bg-secondary-color);
+    transition: background-color 0.2s;
+}
+
+.glossary-table tbody tr.deleted {
+    background-color: #ef444420; /* Faint red background for deleted rows */
+    text-decoration: line-through;
+    color: var(--text-secondary-color);
 }
 
 .glossary-table tbody tr:last-of-type {
     border-bottom: 2px solid #3b82f6;
 }
 
-.glossary-table tbody tr:hover {
+.glossary-table tbody tr:not(.deleted):hover {
     background-color: var(--hover-bg-color);
 }
 
