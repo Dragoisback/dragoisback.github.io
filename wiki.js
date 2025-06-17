@@ -177,7 +177,7 @@ function WikiGlossary({ entries, isLoading, loadingMessage }) {
         } catch (error) {
             console.error("Error loading hidden entries from localStorage:", error);
         }
-
+        
         return () => darkThemeMq.removeListener(mqListener);
     }, []);
 
@@ -308,8 +308,8 @@ function WikiGlossary({ entries, isLoading, loadingMessage }) {
                             onClick={handleClearCache}
                             disabled={isClearingCache}
                             className={`px-3 py-2 text-sm font-medium text-center rounded-lg transition-colors ${
-                                darkMode
-                                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-800 text-white'
+                                darkMode 
+                                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-800 text-white' 
                                 : 'bg-red-500 hover:bg-red-600 focus:ring-red-300 text-white'
                             } ${isClearingCache ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
@@ -345,7 +345,7 @@ function WikiGlossary({ entries, isLoading, loadingMessage }) {
                             className={`w-full flex-grow p-3 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 placeholder-gray-500'}`}
                         />
                         <div className="w-full md:w-72"> {/* Wrapper for NovelSelector to control width in flex row */}
-                            <NovelSelector
+                            <NovelSelector 
                                 novels={uniqueNovels}
                                 selectedNovel={selectedNovel}
                                 onSelect={setSelectedNovel}
@@ -360,19 +360,19 @@ function WikiGlossary({ entries, isLoading, loadingMessage }) {
                     </div>
                     
                     {/* Non-critical error display area */}
-                    <div
-                        id="non-critical-error-display"
+                    <div 
+                        id="non-critical-error-display" 
                         className={`my-2 p-3 border rounded-md text-sm ${
-                            darkMode
-                            ? 'bg-yellow-900 border-yellow-700 text-yellow-300'
+                            darkMode 
+                            ? 'bg-yellow-900 border-yellow-700 text-yellow-300' 
                             : 'bg-yellow-50 border-yellow-300 text-yellow-700'
                         }`} // Visibility will be based on whether content is added by showNonCriticalError
                     ></div>
-
-                    <ResultsTable
-                        entries={filteredAndSortedEntries}
+                    
+                    <ResultsTable 
+                        entries={filteredAndSortedEntries} 
                         darkMode={darkMode}
-                        isLoading={isLoading}
+                        isLoading={isLoading} 
                         loadingMessage={loadingMessage}
                         onHideEntry={handleHideEntry}
                     />
